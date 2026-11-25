@@ -1,0 +1,29 @@
+[project]
+name = "local-agent-harness"
+version = "1.0.0"
+description = "Personal local CLI agent harness built on mlx-code"
+requires-python = ">=3.12.8"
+dependencies = [
+  "mlx-code==0.0.42",
+  "prompt-toolkit>=3.0.53",
+]
+
+[project.scripts]
+lah = "harness.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["harness*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires a running Docker daemon and the configured sandbox image",
+]

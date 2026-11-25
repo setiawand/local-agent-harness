@@ -1,0 +1,207 @@
+from __future__ import annotations
+
+import asyncio
+import sqlite3
+from pathlib import Path
+
+import pytest
+
+from harness.config import load_config
+from harness.docker_sandbox import DockerSandbox
+from harness.filesystem_sandbox import install_filesystem_sandbox
+from harness.store import Store
+
+
+def test_output_reader_caps_retained_bytes_but_drains_stream():
+    class FakeStream:
+        def __init__(self):
+            self.parts = [b"a" * 3000, b"b" * 3000, b"c" * 3000, b""]
+
+        async def read(self, size):
+            return self.parts.pop(0)
+
+    sandbox = object.__new__(DockerSandbox)
+    sandbox.max_output_bytes = 4096
+    output, truncated = asyncio.run(sandbox._read_output_limited(FakeStream()))
+
+    assert len(output) == 4096
+    assert output == b"a" * 3000 + b"b" * 1096
+    assert truncated is True
+
+
+def test_filesystem_gateway_fails_closed_when_required_tool_missing(tmp_path):
+    class FakeSandbox:
+        root = tmp_path
+
+        async def execute(self, command, timeout=None, signal=None):
+            return {"content": [], "is_error": False}
+
+    class FakeTool:
+        def __init__(self, name):
+            self.name = name
+
+    class FakeAgent:
+        tools = [FakeTool("Read"), FakeTool("Grep"), FakeTool("Find")]
+
+    with pytest.raises(RuntimeError, match="installation incomplete"):
+        install_filesystem_sandbox(FakeAgent(), FakeSandbox())
+
+
+def test_tool_call_journal_id_cannot_be_reused(tmp_path):
+    db = Store(tmp_path / "state.sqlite3")
+    session_id = db.create_session(str(tmp_path))
+    call = {
+        "id": "immutable-call-id",
+        "name": "Bash",
+        "arguments": {"command": "pwd"},
+    }
+    db.start_tool_run(session_id, call)
+    db.complete_tool_run(session_id, call["id"], {"is_error": False, "content": []})
+
+    with pytest.raises(sqlite3.IntegrityError):
+        db.start_tool_run(session_id, call)
+
+    assert db.list_tool_runs(session_id)[0]["status"] == "completed"
+
+
+def test_database_backup_and_restore_round_trip(tmp_path):
+    db_path = tmp_path / "state.sqlite3"
+    db = Store(db_path)
+    first = db.create_session(str(tmp_path), "first")
+    backup_path = db.backup_to(tmp_path / "backups" / "state.sqlite3")
+
+    second = db.create_session(str(tmp_path), "second")
+    assert len(db.list_sessions(str(tmp_path))) == 2
+
+    preserved = db.restore_from(backup_path)
+    assert preserved.exists()
+    sessions = db.list_sessions(str(tmp_path))
+    assert [row["id"] for row in sessions] == [first]
+    assert second not in [row["id"] for row in sessions]
+
+
+def test_config_loads_toml_and_environment_override(tmp_path, monkeypatch):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[harness]\nendpoint = "http://127.0.0.1:9000"\nsandbox_timeout = 90\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LAH_SANDBOX_TIMEOUT", "45")
+
+    config = load_config(config_path)
+    assert config.endpoint == "http://127.0.0.1:9000"
+    assert config.sandbox_timeout == 45
+
+
+def test_config_rejects_unknown_keys(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text("[harness]\nunknown_option = true\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="Unknown configuration"):
+        load_config(config_path)
+
+
+def test_config_rejects_unbounded_output_values(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text("[harness]\nmax_output_bytes = 999999999\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="max_output_bytes"):
+        load_config(config_path)
+
+
+def test_security_policy_blocks_shell_metacharacters_and_sensitive_paths(tmp_path):
+    from harness.security import SecurityPolicy, SecurityViolation
+
+    (tmp_path / ".env").write_text("SECRET=not-for-agent", encoding="utf-8")
+    policy = SecurityPolicy(tmp_path)
+
+    with pytest.raises(SecurityViolation):
+        policy.resolve_project_path(".env")
+    with pytest.raises(SecurityViolation):
+        policy.validate_bash("pwd; cat README.md")
+    with pytest.raises(SecurityViolation):
+        policy.validate_bash("curl https://example.com")
+
+
+def test_security_policy_rejects_symlink_escape(tmp_path):
+    from harness.security import SecurityPolicy, SecurityViolation
+
+    outside = tmp_path.parent / "lah-outside-secret.txt"
+    outside.write_text("private", encoding="utf-8")
+    link = tmp_path / "escape"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("Symlink creation is unavailable on this filesystem")
+
+    with pytest.raises(SecurityViolation):
+        SecurityPolicy(tmp_path).resolve_project_path("escape")
+
+
+@pytest.mark.integration
+def test_docker_sandbox_end_to_end(tmp_path):
+    import shutil
+    import subprocess
+
+    if shutil.which("docker") is None:
+        pytest.skip("Docker CLI is not installed")
+    ready = subprocess.run(
+        ["docker", "info"], capture_output=True, timeout=10, check=False
+    )
+    if ready.returncode != 0:
+        pytest.skip("Docker daemon is not running")
+
+    sandbox = DockerSandbox(tmp_path, max_timeout=15, max_output_bytes=8192)
+    result = asyncio.run(sandbox.execute(
+        """python -c "from pathlib import Path; Path('stage6-docker-smoke.txt').write_text('isolated'); print('sandbox-ok')" """
+    ))
+    assert result["is_error"] is False
+    assert "sandbox-ok" in result["content"][0]["text"]
+    assert (tmp_path / "stage6-docker-smoke.txt").read_text() == "isolated"
+
+
+@pytest.mark.integration
+def test_docker_sandbox_has_no_network_and_read_only_rootfs(tmp_path):
+    import shutil
+    import subprocess
+
+    if shutil.which("docker") is None:
+        pytest.skip("Docker CLI is not installed")
+    ready = subprocess.run(
+        ["docker", "info"], capture_output=True, timeout=10, check=False
+    )
+    if ready.returncode != 0:
+        pytest.skip("Docker daemon is not running")
+
+    sandbox = DockerSandbox(tmp_path, max_timeout=15)
+    # Interface enumeration is not a reliable network-isolation assertion:
+    # Docker Desktop / Linux kernels may expose virtual interface names even
+    # when the container has no usable routes. Verify the actual isolation
+    # boundary instead: no default IPv4/IPv6 route and no outbound connection.
+    # Quote the Python program as one single-quoted shell argument. The
+    # DockerSandbox executes commands through /bin/sh -c, so unquoted Python
+    # statements containing semicolons would otherwise be parsed as shell.
+    network_command = 'python -c \'import socket; s=socket.socket(socket.AF_INET,socket.SOCK_STREAM); s.settimeout(2); v4=s.connect_ex(("1.1.1.1",443)); s.close(); s=socket.socket(socket.AF_INET6,socket.SOCK_STREAM); s.settimeout(2); v6=s.connect_ex(("2606:4700:4700::1111",443,0,0)); s.close(); print("ipv4_connect_rc="+str(v4)); print("ipv6_connect_rc="+str(v6)); assert v4 != 0, "unexpected outbound IPv4 connectivity"; assert v6 != 0, "unexpected outbound IPv6 connectivity"\''
+    network_probe = asyncio.run(sandbox.execute(network_command))
+    assert network_probe["is_error"] is False, network_probe
+    network_text = network_probe["content"][0]["text"]
+    assert "ipv4_default_routes=0" in network_text, network_text
+    assert "ipv6_default_routes=0" in network_text, network_text
+    assert "external_connect_rc=0" not in network_text, network_text
+
+    rootfs_write = asyncio.run(sandbox.execute(
+        """python -c "from pathlib import Path; Path('/etc/lah-stage6-probe').write_text('x')" """
+    ))
+    assert rootfs_write["is_error"] is True
+
+
+def test_approval_is_one_time_and_never_cached(monkeypatch, tmp_path):
+    from harness.security import ApprovalGate
+
+    answers = iter(["APPROVE", "no"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(answers))
+    gate = ApprovalGate()
+
+    first = asyncio.run(gate.approve("Bash", "pwd", "command", tmp_path))
+    second = asyncio.run(gate.approve("Bash", "pwd", "command", tmp_path))
+
+    assert first is True
+    assert second is False

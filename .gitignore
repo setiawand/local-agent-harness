@@ -1,0 +1,118 @@
+# ==========================================
+# Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.python-version
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging
+*.egg-info/
+.eggs/
+dist/
+build/
+wheels/
+pip-wheel-metadata/
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml/
+
+# ==========================================
+# Environment & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+!.env.template
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ==========================================
+# Runtime Database
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+
+# ==========================================
+# Logs & Runtime Data
+# ==========================================
+*.log
+logs/
+runtime/
+tmp/
+temp/
+
+# ==========================================
+# Backup & Recovery
+# ==========================================
+*.bak
+*.backup
+*.old
+backups/
+upgrade-backups/
+
+# ==========================================
+# Local AI Models & Artifacts
+# ==========================================
+models/
+model-cache/
+artifacts/
+checkpoints/
+*.safetensors
+*.gguf
+*.mlx
+*.ggml
+
+# ==========================================
+# IDE & Editor
+# ==========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ==========================================
+# macOS
+# ==========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ==========================================
+# Docker & Local Environment
+# ==========================================
+.docker/
+docker-data/
+
+# ==========================================
+# Local Configuration
+# ==========================================
+config.local.toml

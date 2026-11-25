@@ -1,0 +1,20 @@
+# Local Agent Harness v1.0
+# Copy to ~/.config/local-agent-harness/config.toml
+
+[harness]
+endpoint = "http://127.0.0.1:8001"
+
+# Keep the image pinned by digest. Override only with a reviewed image.
+docker_image = "python@sha256:191083cdf6c7bda8c76158983163ead5d5cf7b77cf3033e805bb0f5296f51b4b"
+
+sandbox_timeout = 60
+docker_memory = "512m"
+docker_cpus = "1"
+docker_pids_limit = 64
+
+# Output is drained but only this many bytes are retained in memory.
+max_output_bytes = 1048576
+
+max_snapshot_files = 10000
+max_snapshot_bytes = 524288000
+max_snapshot_file_bytes = 26214400
