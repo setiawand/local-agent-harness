@@ -228,6 +228,17 @@ def load_config(config_path: str | Path | None = None) -> HarnessConfig:
     parsed = urlsplit(web.base_url)
     if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
         raise ValueError("web.searxng.base_url must use a loopback host.")
+    try:
+        if parsed.port is not None and not 1 <= parsed.port <= 65535:
+            raise ValueError("web.searxng.base_url port must be between 1 and 65535.")
+    except ValueError as exc:
+        raise ValueError(f"Invalid web.searxng.base_url: {exc}") from exc
+    if len(web.default_language) > 32 or any(ord(ch) < 32 for ch in web.default_language):
+        raise ValueError("web.searxng.default_language must be at most 32 printable characters.")
+    if not 0 <= web.search_cache_ttl_seconds <= 86400:
+        raise ValueError("web.search.cache_ttl_seconds must be between 0 and 86400.")
+    if not 0 <= web.fetch_cache_ttl_seconds <= 604800:
+        raise ValueError("web.fetch.cache_ttl_seconds must be between 0 and 604800.")
     if web.safe_search not in {0, 1, 2}:
         raise ValueError("web.searxng.safe_search must be 0, 1, or 2.")
     if not 1 <= web.max_results <= 10 or not 1 <= web.max_query_length <= 500:
