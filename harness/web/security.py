@@ -15,25 +15,34 @@ class WebSecurityError(ValueError):
 def normalize_url(raw_url: str, allowed_schemes: set[str] | None = None) -> tuple[str, str, int]:
     if not isinstance(raw_url, str) or len(raw_url) > 4096:
         raise WebSecurityError("URL is missing or exceeds 4096 characters.")
-    parsed = urlsplit(raw_url.strip())
-    allowed_schemes = allowed_schemes or {"http", "https"}\n    if parsed.scheme.lower() not in allowed_schemes:
-        raise WebSecurityError("Only HTTP and HTTPS URLs are permitted.")
-    if not parsed.hostname or parsed.username or parsed.password:
-        raise WebSecurityError("URL host is missing or URL credentials are forbidden.")
-    host = parsed.hostname.rstrip(".").encode("idna").decode("ascii").lower()
-    if host in {"localhost", "localhost.localdomain"} or host.endswith((".localhost", ".local", ".internal", ".test")):
-        raise WebSecurityError("Local and internal hostnames are blocked.")
     try:
-        ipaddress.ip_address(host)
-    except ValueError:
-        pass
-    else:
-        raise WebSecurityError("IP-literal URLs are blocked.")
-    port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
-    if not 1 <= port <= 65535:
-        raise WebSecurityError("Invalid URL port.")
-    clean = urlunsplit((parsed.scheme.lower(), parsed.netloc, parsed.path or "/", parsed.query, ""))
-    return clean, host, port
+        parsed = urlsplit(raw_url.strip())
+        allowed_schemes = allowed_schemes or {"http", "https"}
+        scheme = parsed.scheme.lower()
+        if scheme not in allowed_schemes:
+            raise WebSecurityError("URL scheme is not enabled by policy.")
+        if not parsed.hostname or parsed.username or parsed.password:
+            raise WebSecurityError("URL host is missing or URL credentials are forbidden.")
+        host = parsed.hostname.rstrip(".").encode("idna").decode("ascii").lower()
+        if host in {"localhost", "localhost.localdomain"} or host.endswith(
+            (".localhost", ".local", ".internal", ".test")
+        ):
+            raise WebSecurityError("Local and internal hostnames are blocked.")
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            pass
+        else:
+            raise WebSecurityError("IP-literal URLs are blocked.")
+        port = parsed.port or (443 if scheme == "https" else 80)
+        if not 1 <= port <= 65535:
+            raise WebSecurityError("Invalid URL port.")
+        clean = urlunsplit((scheme, parsed.netloc, parsed.path or "/", parsed.query, ""))
+        return clean, host, port
+    except WebSecurityError:
+        raise
+    except ValueError as exc:
+        raise WebSecurityError(f"Malformed URL: {exc}") from exc
 
 
 async def resolve_public(host: str, port: int) -> list[str]:
