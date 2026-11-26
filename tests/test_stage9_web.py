@@ -186,7 +186,7 @@ def test_safe_fetcher_rejects_non_http_scheme():
     from harness.web.fetch import FetchError, SafeWebFetcher
 
     async def run():
-        with pytest.raises(FetchError, match="Only HTTP"):
+        with pytest.raises(FetchError, match="scheme is not enabled"):
             await SafeWebFetcher().fetch("file:///etc/passwd")
 
     asyncio.run(run())
