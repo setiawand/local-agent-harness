@@ -92,6 +92,7 @@ uv run lah --project . --write
 | `/remember TEXT` | Save memory |
 | `/search TEXT` | Search memory |
 | `/audit` | Show security audit events |
+| `/sources` | List fetched web sources and citation URLs |
 | `/backup` | Create consistent SQLite backup |
 | `/restore PATH` | Restore backup after explicit `RESTORE` confirmation |
 | `/write on` | Enable Write/Edit/Bash |
