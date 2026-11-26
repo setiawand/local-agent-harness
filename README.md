@@ -1,4 +1,4 @@
-# Local Agent Harness v1.0
+# Local Agent Harness v1.1 (Stage 9 development branch)
 
 Personal local CLI coding agent using `mlx-code==0.0.42` and a local OpenAI-compatible inference endpoint.
 
@@ -111,6 +111,30 @@ A restore creates a pre-restore database copy and requires restarting the harnes
 - SQLite backup/restore uses SQLite's online backup API and integrity checks.
 
 **Limitations:** Docker Desktop is a VM-backed isolation boundary, not a formal guarantee against every host or hypervisor vulnerability. Snapshot synchronization is conservative but cannot provide a universal atomic compare-and-swap guarantee against a concurrently malicious host process. Do not mount secrets into the workspace or treat this as a multi-tenant hostile-code execution service.
+
+## Stage 9 — Web Intelligence (development)
+
+This branch introduces the first host-side web gateway components:
+
+- SearXNG deployment overlay: `docker-compose.web.yml` (loopback-only port binding).
+- SearXNG JSON search client.
+- HTTP(S) fetcher with public-address DNS validation, pinned resolution, redirect revalidation, decompressed response-size limit, and HTML extraction through Trafilatura.
+- Source metadata-only citation store; page bodies are not persisted.
+- Web gateway remains a host-process component. The Docker Bash/filesystem sandbox is still network-disabled.
+
+Before starting SearXNG, replace the placeholder `server.secret_key` in `searxng/settings.yml` with a long random value. Start it with:
+
+```bash
+docker compose -f docker-compose.web.yml up -d
+```
+
+Check the JSON endpoint from the host:
+
+```bash
+curl 'http://127.0.0.1:8888/search?q=python&format=json'
+```
+
+**Integration status:** this is an incremental foundation, not yet the complete Stage 9 release. Model-facing WebSearch/WebFetch tool registration, gateway policy/journal wiring, configuration validation, CLI source display, cache/rate limiting, and adversarial/integration tests remain to be completed before enabling web access in an agent session. Do not set `[web].enabled = true` expecting model tools to be available yet.
 
 ## Tests
 
