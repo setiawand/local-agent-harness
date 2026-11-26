@@ -37,7 +37,9 @@ def normalize_url(raw_url: str, allowed_schemes: set[str] | None = None) -> tupl
         port = parsed.port or (443 if scheme == "https" else 80)
         if not 1 <= port <= 65535:
             raise WebSecurityError("Invalid URL port.")
-        clean = urlunsplit((scheme, parsed.netloc, parsed.path or "/", parsed.query, ""))
+        default_port = 443 if scheme == "https" else 80
+        netloc = host if port == default_port else f"{host}:{port}"
+        clean = urlunsplit((scheme, netloc, parsed.path or "/", parsed.query, ""))
         return clean, host, port
     except WebSecurityError:
         raise
