@@ -36,9 +36,18 @@ class CitationStore:
 
     def record(self, session_id: str, page, status: str = "fetched") -> str:
         with self._connect() as conn:
-            ordinal = conn.execute(
-                "SELECT COUNT(*) FROM web_sources WHERE session_id=?", (session_id,)
-            ).fetchone()[0] + 1
+            conn.execute("BEGIN IMMEDIATE")
+            rows = conn.execute(
+                "SELECT source_id FROM web_sources WHERE session_id=?",
+                (session_id,),
+            ).fetchall()
+            ordinal = max(
+                (int(row["source_id"].rsplit(":", 1)[-1][1:])
+                 for row in rows
+                 if row["source_id"].rsplit(":", 1)[-1].startswith("W")
+                 and row["source_id"].rsplit(":", 1)[-1][1:].isdigit()),
+                default=0,
+            ) + 1
             source_id = f"W{ordinal}"
             domain = (urlsplit(page.canonical_url).hostname or "")[:255]
             conn.execute("""
@@ -46,7 +55,7 @@ class CitationStore:
                 (source_id, session_id, url, title, domain, fetched_at, content_hash, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                source_id, session_id, page.canonical_url[:4096],
+                f"{session_id}:{source_id}", session_id, page.canonical_url[:4096],
                 page.title[:500], domain, page.fetched_at,
                 page.content_hash, status[:40],
             ))
@@ -54,7 +63,11 @@ class CitationStore:
 
     def list_sources(self, session_id: str):
         with self._connect() as conn:
-            return [dict(row) for row in conn.execute(
-                "SELECT * FROM web_sources WHERE session_id=? ORDER BY rowid",
+            rows = [dict(row) for row in conn.execute(
+                "SELECT source_id, session_id, url, title, domain, fetched_at, content_hash, status "
+                "FROM web_sources WHERE session_id=? ORDER BY rowid",
                 (session_id,),
             ).fetchall()]
+        for row in rows:
+            row["source_id"] = row["source_id"].split(":", 1)[-1]
+        return rows
