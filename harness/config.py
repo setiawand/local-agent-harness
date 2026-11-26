@@ -238,6 +238,10 @@ def load_config(config_path: str | Path | None = None) -> HarnessConfig:
         raise ValueError("Web redirect or response size limit is outside allowed bounds.")
     if not 256 <= web.max_content_chars <= 100_000 or not 1 <= web.max_concurrent <= 2:
         raise ValueError("Web content or concurrency limit is outside allowed bounds.")
+    if web.enabled and not web.store_source_metadata:
+        raise ValueError("Web source metadata must remain enabled so fetched pages can be cited.")
+    if web.enabled and not web.audit_enabled:
+        raise ValueError("Web audit logging cannot be disabled in this release.")
     if web.store_page_content:
         raise ValueError("Storing fetched page content is not supported; keep store_page_content=false.")
     if web.enabled and not (web.allow_http or web.allow_https):
