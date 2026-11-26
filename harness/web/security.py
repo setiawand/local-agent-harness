@@ -12,11 +12,11 @@ class WebSecurityError(ValueError):
     pass
 
 
-def normalize_url(raw_url: str) -> tuple[str, str, int]:
+def normalize_url(raw_url: str, allowed_schemes: set[str] | None = None) -> tuple[str, str, int]:
     if not isinstance(raw_url, str) or len(raw_url) > 4096:
         raise WebSecurityError("URL is missing or exceeds 4096 characters.")
     parsed = urlsplit(raw_url.strip())
-    if parsed.scheme.lower() not in {"http", "https"}:
+    allowed_schemes = allowed_schemes or {"http", "https"}\n    if parsed.scheme.lower() not in allowed_schemes:
         raise WebSecurityError("Only HTTP and HTTPS URLs are permitted.")
     if not parsed.hostname or parsed.username or parsed.password:
         raise WebSecurityError("URL host is missing or URL credentials are forbidden.")
