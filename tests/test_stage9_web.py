@@ -177,7 +177,7 @@ def test_safe_fetcher_rejects_localhost_before_network_request():
     async def run():
         fetcher = SafeWebFetcher()
         with pytest.raises(FetchError, match="Local and internal"):
-            await fetcher.fetch("http://127.0.0.1/admin")
+            await fetcher.fetch("http://localhost/admin")
 
     asyncio.run(run())
 
