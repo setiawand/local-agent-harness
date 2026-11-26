@@ -73,9 +73,13 @@ class WebGateway:
         payload = [item.as_dict() for item in results]
         if self.search_cache_ttl:
             async with self._cache_lock:
-                self._search_cache[cache_key] = (
-                    time.monotonic() + self.search_cache_ttl, payload
-                )
+                now = time.monotonic()
+                for key, (expires, _) in list(self._search_cache.items()):
+                    if expires <= now:
+                        self._search_cache.pop(key, None)
+                if len(self._search_cache) >= 128:
+                    self._search_cache.pop(next(iter(self._search_cache)))
+                self._search_cache[cache_key] = (now + self.search_cache_ttl, payload)
         return payload
 
     async def fetch(self, url: str):
@@ -94,7 +98,11 @@ class WebGateway:
         }
         if self.fetch_cache_ttl:
             async with self._cache_lock:
-                self._fetch_cache[url] = (
-                    time.monotonic() + self.fetch_cache_ttl, payload
-                )
+                now = time.monotonic()
+                for key, (expires, _) in list(self._fetch_cache.items()):
+                    if expires <= now:
+                        self._fetch_cache.pop(key, None)
+                if len(self._fetch_cache) >= 128:
+                    self._fetch_cache.pop(next(iter(self._fetch_cache)))
+                self._fetch_cache[url] = (now + self.fetch_cache_ttl, payload)
         return payload
