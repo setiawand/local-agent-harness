@@ -120,7 +120,7 @@ This branch introduces the first host-side web gateway components:
 - SearXNG deployment overlay: `docker-compose.web.yml` (loopback-only port binding).
 - SearXNG JSON search client.
 - HTTP(S) fetcher with public-address DNS validation, pinned resolution, redirect revalidation, decompressed response-size limit, and HTML extraction through Trafilatura.
-- Source metadata-only citation store; page bodies are not persisted.
+- Citation storage keeps source metadata only; raw HTML is not persisted by the web gateway. Extracted text is retained in the normal session messages/tool journal for conversation recovery.
 - Web gateway remains a host-process component. The Docker Bash/filesystem sandbox is still network-disabled.
 
 Set a runtime secret (do not commit it) and start SearXNG:
