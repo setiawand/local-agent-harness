@@ -97,7 +97,8 @@ def build_prompt_session():
 
 
 def build_agent(
-    project_root: Path, db: Store, write_enabled: bool, config: HarnessConfig
+    project_root: Path, db: Store, write_enabled: bool, config: HarnessConfig,
+    session_id: str,
 ):
     memories = db.list_memories(str(project_root))
     memory_lines = [row["content"] for row in memories[:12]]
@@ -123,7 +124,7 @@ def build_agent(
         )
         citations = CitationStore(db.db_path)
         citations.initialize()
-        extra_tool_classes = build_web_tool_classes(gateway, citations, db._lah_active_session_id)
+        extra_tool_classes = build_web_tool_classes(gateway, citations, session_id)
         if not web.fetch_enabled:
             extra_tool_classes = extra_tool_classes[:1]
     return create_agent(
@@ -376,7 +377,7 @@ async def run(args):
             print(f"Session is empty: {session_id}")
             return
         messages = recover_interrupted_tools(db, session_id, messages)
-        agent = build_agent(project_root, db, write_enabled, config)
+        agent = build_agent(project_root, db, write_enabled, config, session_id)
         agent.messages = messages
         print(f"Resumed session: {session_id}")
     else:
@@ -388,7 +389,7 @@ async def run(args):
     print(f"Write tools: {'ON' if write_enabled else 'OFF (read-only)'}")
     if write_enabled:
         print("Execution: Docker sandbox (filesystem tools + Bash; network disabled)")
-    print(f"Web tools: {"ON" if config.web.enabled else "OFF"}")
+    print(f"Web tools: {'ON' if config.web.enabled else 'OFF'}")
     print("Type /help for commands. Ctrl-D or /quit to exit.")
     prompt_session = build_prompt_session()
 
@@ -534,7 +535,7 @@ async def run(args):
                 print("Write mode unchanged because save failed.")
                 continue
             saved_messages = list(agent.messages)
-            agent = build_agent(project_root, db, new_write_enabled, config)
+            agent = build_agent(project_root, db, new_write_enabled, config, session_id)
             agent.messages = saved_messages
             write_enabled = new_write_enabled
             print(f"Write tools: {'ON' if write_enabled else 'OFF'}")
