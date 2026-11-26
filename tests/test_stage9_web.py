@@ -111,3 +111,49 @@ def test_citation_store_allocates_unique_ids_per_session(tmp_path):
     assert store.record("session-b", page) == "W1"
     assert [x["source_id"] for x in store.list_sources("session-a")] == ["W1", "W2"]
     assert store.list_sources("session-b")[0]["source_id"] == "W1"
+
+def test_gateway_search_cache_avoids_repeated_upstream_calls():
+    from harness.web.gateway import WebGateway
+    from harness.web.models import SearchResult
+
+    class FakeSearch:
+        calls = 0
+
+        async def search(self, query, limit, language, safe_search):
+            self.calls += 1
+            return [SearchResult("Example", "https://example.org", "snippet")]
+
+    async def run():
+        gateway = WebGateway(search_cache_ttl=60)
+        fake = FakeSearch()
+        gateway.search_client = fake
+        first = await gateway.search("same query")
+        second = await gateway.search("same query")
+        assert first == second
+        assert fake.calls == 1
+
+    asyncio.run(run())
+
+
+def test_web_fetch_tool_records_citation_metadata(tmp_path):
+    from harness.web.tools import build_web_tool_classes
+    from harness.web.citations import CitationStore
+
+    class FakeGateway:
+        async def fetch(self, url):
+            return {
+                "url": url, "canonical_url": url, "title": "Example page",
+                "text": "Extracted text", "content_type": "text/html",
+                "fetched_at": "2026-11-27T00:00:00+00:00",
+                "content_hash": "hash-1",
+            }
+
+    store = CitationStore(tmp_path / "state.sqlite3")
+    store.initialize()
+    _, fetch_class = build_web_tool_classes(FakeGateway(), store, "session-1")
+    tool = fetch_class({})
+    params = tool.parameters(url="https://example.org/page")
+    result = asyncio.run(tool.execute(params))
+    assert result["is_error"] is False
+    assert '"source_id": "W1"' in result["content"][0]["text"]
+    assert store.list_sources("session-1")[0]["source_id"] == "W1"
