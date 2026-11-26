@@ -105,27 +105,33 @@ def build_agent(
     extra_tool_classes = []
     if config.web.enabled:
         web = config.web
-        gateway = WebGateway(
-            base_url=web.base_url,
-            search_timeout=web.search_timeout_seconds,
-            fetch_timeout=web.fetch_timeout_seconds,
-            max_results=web.max_results,
-            max_query_length=web.max_query_length,
-            max_content_chars=web.max_content_chars,
-            max_response_bytes=web.max_response_bytes,
-            max_redirects=web.max_redirects,
-            max_concurrent=web.max_concurrent,
-            allowed_schemes={
-                scheme for scheme, enabled in
-                (("http", web.allow_http), ("https", web.allow_https)) if enabled
-            },
-            default_language=web.default_language,
-            safe_search=web.safe_search,
-            search_cache_ttl=web.search_cache_ttl_seconds,
-            fetch_cache_ttl=web.fetch_cache_ttl_seconds,
-        )
-        citations = CitationStore(db.db_path)
-        citations.initialize()
+        gateway = getattr(db, "_lah_web_gateway", None)
+        if gateway is None:
+            gateway = WebGateway(
+                base_url=web.base_url,
+                search_timeout=web.search_timeout_seconds,
+                fetch_timeout=web.fetch_timeout_seconds,
+                max_results=web.max_results,
+                max_query_length=web.max_query_length,
+                max_content_chars=web.max_content_chars,
+                max_response_bytes=web.max_response_bytes,
+                max_redirects=web.max_redirects,
+                max_concurrent=web.max_concurrent,
+                allowed_schemes={
+                    scheme for scheme, enabled in
+                    (("http", web.allow_http), ("https", web.allow_https)) if enabled
+                },
+                default_language=web.default_language,
+                safe_search=web.safe_search,
+                search_cache_ttl=web.search_cache_ttl_seconds,
+                fetch_cache_ttl=web.fetch_cache_ttl_seconds,
+            )
+            db._lah_web_gateway = gateway
+        citations = getattr(db, "_lah_citation_store", None)
+        if citations is None:
+            citations = CitationStore(db.db_path)
+            citations.initialize()
+            db._lah_citation_store = citations
         extra_tool_classes = build_web_tool_classes(gateway, citations, session_id)
         if not web.fetch_enabled:
             extra_tool_classes = extra_tool_classes[:1]
