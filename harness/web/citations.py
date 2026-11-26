@@ -49,15 +49,18 @@ class CitationStore:
                 default=0,
             ) + 1
             source_id = f"W{ordinal}"
-            domain = (urlsplit(page.canonical_url).hostname or "")[:255]
+            canonical_url = page.get("canonical_url") if isinstance(page, dict) else page.canonical_url
+            title = page.get("title", "") if isinstance(page, dict) else page.title
+            fetched_at = page.get("fetched_at", "") if isinstance(page, dict) else page.fetched_at
+            content_hash = page.get("content_hash", "") if isinstance(page, dict) else page.content_hash
+            domain = (urlsplit(canonical_url).hostname or "")[:255]
             conn.execute("""
                 INSERT INTO web_sources
                 (source_id, session_id, url, title, domain, fetched_at, content_hash, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                f"{session_id}:{source_id}", session_id, page.canonical_url[:4096],
-                page.title[:500], domain, page.fetched_at,
-                page.content_hash, status[:40],
+                f"{session_id}:{source_id}", session_id, canonical_url[:4096],
+                title[:500], domain, fetched_at, content_hash, status[:40],
             ))
         return source_id
 
