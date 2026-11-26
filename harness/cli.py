@@ -384,7 +384,7 @@ async def run(args):
         print(f"Resumed session: {session_id}")
     else:
         session_id = db.create_session(project_key)
-        agent = build_agent(project_root, db, write_enabled, config)
+        agent = build_agent(project_root, db, write_enabled, config, session_id)
         print(f"New session: {session_id}")
 
     print(f"Project: {project_root}")
@@ -416,7 +416,7 @@ async def run(args):
                 print("New session not created because save failed.")
                 continue
             session_id = db.create_session(project_key)
-            agent = build_agent(project_root, db, write_enabled, config)
+            agent = build_agent(project_root, db, write_enabled, config, session_id)
             print(f"New session: {session_id}")
             continue
         if user_text == "/sessions":
@@ -521,7 +521,7 @@ async def run(args):
                     continue
                 messages = recover_interrupted_tools(db, target, messages)
                 session_id = target
-                agent = build_agent(project_root, db, write_enabled, config)
+                agent = build_agent(project_root, db, write_enabled, config, session_id)
                 agent.messages = messages
                 print(f"Resumed session: {session_id}")
             except Exception as exc:
