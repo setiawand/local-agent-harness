@@ -1,6 +1,6 @@
 services:
   searxng:
-    image: searxng/searxng:2026.11.0
+    image: searxng/searxng:latest
     container_name: lah-searxng
     restart: unless-stopped
     ports:
@@ -8,14 +8,9 @@ services:
     volumes:
       - ./searxng:/etc/searxng:rw
     environment:
-      - SEARXNG_BASE_URL=http://localhost:8888/
+      - SEARXNG_BASE_URL=http://localhost:8888/\n      - SEARXNG_SECRET=${SEARXNG_SECRET:?Set SEARXNG_SECRET in the environment before starting SearXNG}
       - UWSGI_WORKERS=2
       - UWSGI_THREADS=4
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
     security_opt:
       - no-new-privileges:true
     cap_drop:
