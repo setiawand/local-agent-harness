@@ -137,7 +137,25 @@ Check the JSON endpoint from the host:
 curl 'http://127.0.0.1:8888/search?q=python&format=json'
 ```
 
-**Integration status:** this is an incremental foundation, not yet the complete Stage 9 release. Model-facing WebSearch/WebFetch tool registration, gateway policy/journal wiring, configuration validation, CLI source display, cache/rate limiting, and adversarial/integration tests remain to be completed before enabling web access in an agent session. Do not set `[web].enabled = true` expecting model tools to be available yet.
+Enable the web tools in `~/.config/local-agent-harness/config.toml` after SearXNG is healthy:
+
+```toml
+[web]
+enabled = true
+provider = "searxng"
+```
+
+The remaining web settings can be copied from `config.example.toml`. Then run:
+
+```bash
+uv sync
+uv run lah --doctor --project .
+uv run lah --project .
+```
+
+When enabled, the agent receives `WebSearch` and `WebFetch`. Both outbound operations require one-time approval and are recorded in the existing tool journal/security audit. Fetched pages receive session-scoped citation IDs such as `[W1]`; use `/sources` to list their URLs and metadata. Search and fetch caches are in-memory only, with a gateway limit of 30 uncached requests per minute.
+
+The initial integration is implemented on this branch, but has not yet been run against the user's local environment. Run the test suite before enabling it for normal work. The Docker Bash/filesystem sandbox remains network-disabled; do not add the web gateway or Docker socket to that container.
 
 ## Tests
 
