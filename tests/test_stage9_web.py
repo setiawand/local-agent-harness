@@ -190,3 +190,20 @@ def test_safe_fetcher_rejects_non_http_scheme():
             await SafeWebFetcher().fetch("file:///etc/passwd")
 
     asyncio.run(run())
+
+def test_gateway_rate_limits_uncached_requests():
+    from harness.web.gateway import WebGateway, WebRateLimitError
+
+    class EmptySearch:
+        async def search(self, query, limit, language, safe_search):
+            return []
+
+    async def run():
+        gateway = WebGateway(search_cache_ttl=0)
+        gateway.search_client = EmptySearch()
+        for index in range(30):
+            await gateway.search(f"unique query {index}")
+        with pytest.raises(WebRateLimitError, match="30 requests/minute"):
+            await gateway.search("the thirty-first unique query")
+
+    asyncio.run(run())
