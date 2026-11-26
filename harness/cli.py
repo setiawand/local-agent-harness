@@ -74,6 +74,8 @@ Input:
 Security:
   Bash requires one-time approval and runs in an isolated Docker container.
   Edit and overwriting an existing file require one-time approval.
+  WebSearch and WebFetch require one-time approval for each outbound request.
+  Fetched web source metadata is available with /sources.
   New file creation requires /write on.
 """)
 
