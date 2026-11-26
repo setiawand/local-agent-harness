@@ -315,7 +315,7 @@ def redact_audit_target(tool_name: str, target: str) -> str:
         value,
     )
     value = re.sub(
-        r"(?i)\b(password|token|secret|api_key)=([^\s]+)",
+        r"(?i)\b(password|token|access_token|refresh_token|secret|client_secret|api_key|signature|authorization)=([^\s&]+)",
         r"\1=[REDACTED]",
         value,
     )
