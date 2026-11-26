@@ -11,8 +11,6 @@ services:
     environment:
       - SEARXNG_BASE_URL=http://localhost:8888/
       - SEARXNG_SECRET=${SEARXNG_SECRET:?Set SEARXNG_SECRET in the environment before starting SearXNG}
-      - UWSGI_WORKERS=2
-      - UWSGI_THREADS=4
     security_opt:
       - no-new-privileges:true
     cap_drop:
