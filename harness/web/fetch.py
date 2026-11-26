@@ -31,7 +31,7 @@ class SafeWebFetcher:
             current = url
             for redirect_count in range(self.max_redirects + 1):
                 try:
-                    current, _, _ = await validate_public_target(current, self.allowed_schemes)
+                    current, _, _ = await asyncio.wait_for(\n                        validate_public_target(current, self.allowed_schemes),\n                        timeout=self.timeout_seconds,\n                    )
                     timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
                     connector = aiohttp.TCPConnector(
                         resolver=PinnedPublicResolver(), use_dns_cache=False,
