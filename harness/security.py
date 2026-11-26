@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import os
 import re
 import shlex
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 class SecurityViolation(ValueError):
@@ -173,8 +175,28 @@ class SecurityPolicy:
 
         if name == "WebFetch":
             raw_url = str(args.get("url") or "").strip()
-            if len(raw_url) > 4096 or not raw_url.startswith(("http://", "https://")):
-                raise SecurityViolation("WebFetch requires an HTTP(S) URL.")
+            if len(raw_url) > 4096:
+                raise SecurityViolation("WebFetch URL exceeds 4096 characters.")
+            try:
+                parsed = urlsplit(raw_url)
+                host = (parsed.hostname or "").rstrip(".").lower()
+                _ = parsed.port
+            except ValueError as exc:
+                raise SecurityViolation(f"Malformed WebFetch URL: {exc}") from exc
+            if parsed.scheme.lower() not in {"http", "https"} or not host:
+                raise SecurityViolation("WebFetch requires a valid HTTP(S) URL.")
+            if parsed.username or parsed.password:
+                raise SecurityViolation("WebFetch URLs containing credentials are blocked.")
+            if host in {"localhost", "localhost.localdomain"} or host.endswith(
+                (".localhost", ".local", ".internal", ".test")
+            ):
+                raise SecurityViolation("WebFetch local and internal hostnames are blocked.")
+            try:
+                ipaddress.ip_address(host)
+            except ValueError:
+                pass
+            else:
+                raise SecurityViolation("WebFetch IP-literal URLs are blocked.")
             return raw_url, "Outbound HTTP request to a public web page requires one-time approval"
 
         if name == "Bash":
