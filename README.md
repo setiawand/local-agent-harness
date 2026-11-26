@@ -122,11 +122,14 @@ This branch introduces the first host-side web gateway components:
 - Source metadata-only citation store; page bodies are not persisted.
 - Web gateway remains a host-process component. The Docker Bash/filesystem sandbox is still network-disabled.
 
-Before starting SearXNG, replace the placeholder `server.secret_key` in `searxng/settings.yml` with a long random value. Start it with:
+Set a runtime secret (do not commit it) and start SearXNG:
 
 ```bash
+export SEARXNG_SECRET="$(openssl rand -hex 32)"
 docker compose -f docker-compose.web.yml up -d
 ```
+
+The compose file requires `SEARXNG_SECRET` and binds port 8888 to loopback only. The SearXNG image currently uses the mutable `latest` tag; pin a verified image digest before production use.
 
 Check the JSON endpoint from the host:
 
