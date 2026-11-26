@@ -170,3 +170,23 @@ def test_web_fetch_security_policy_rejects_credentials_and_local_hosts(tmp_path,
     policy = SecurityPolicy(tmp_path)
     with pytest.raises(SecurityViolation):
         policy.validate_tool_call("WebFetch", {"url": url})
+
+def test_safe_fetcher_rejects_localhost_before_network_request():
+    from harness.web.fetch import FetchError, SafeWebFetcher
+
+    async def run():
+        fetcher = SafeWebFetcher()
+        with pytest.raises(FetchError, match="Local and internal"):
+            await fetcher.fetch("http://127.0.0.1/admin")
+
+    asyncio.run(run())
+
+
+def test_safe_fetcher_rejects_non_http_scheme():
+    from harness.web.fetch import FetchError, SafeWebFetcher
+
+    async def run():
+        with pytest.raises(FetchError, match="Only HTTP"):
+            await SafeWebFetcher().fetch("file:///etc/passwd")
+
+    asyncio.run(run())
