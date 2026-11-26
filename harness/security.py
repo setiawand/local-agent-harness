@@ -163,6 +163,20 @@ class SecurityPolicy:
                 raise SecurityViolation(f"{name} requires a directory inside the project.")
             return str(path), ""
 
+        if name == "WebSearch":
+            query = str(args.get("query") or "").strip()
+            if not query or len(query) > 500:
+                raise SecurityViolation("WebSearch query must contain 1–500 characters.")
+            if any(ord(ch) < 32 for ch in query):
+                raise SecurityViolation("WebSearch query contains control characters.")
+            return query, "Outbound web search sends this query to configured search engines"
+
+        if name == "WebFetch":
+            raw_url = str(args.get("url") or "").strip()
+            if len(raw_url) > 4096 or not raw_url.startswith(("http://", "https://")):
+                raise SecurityViolation("WebFetch requires an HTTP(S) URL.")
+            return raw_url, "Outbound HTTP request to a public web page requires one-time approval"
+
         if name == "Bash":
             command = str(args.get("command") or "").strip()
             self.validate_bash(command)
