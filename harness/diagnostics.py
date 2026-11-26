@@ -59,6 +59,17 @@ def doctor(config: HarnessConfig, project_root: Path) -> tuple[bool, list[tuple[
     except (OSError, subprocess.TimeoutExpired) as exc:
         add("Sandbox image", "FAIL", str(exc))
 
+    if config.web.enabled:
+        web_parsed = urlparse(config.web.base_url)
+        try:
+            with socket.create_connection(
+                (web_parsed.hostname, web_parsed.port or (443 if web_parsed.scheme == "https" else 80)),
+                timeout=2,
+            ):
+                add("SearXNG", "PASS", config.web.base_url, required=False)
+        except OSError as exc:
+            add("SearXNG", "WARN", f"{config.web.base_url} not reachable ({exc})", required=False)
+
     parsed = urlparse(config.endpoint)
     try:
         with socket.create_connection((parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80)), timeout=2):
