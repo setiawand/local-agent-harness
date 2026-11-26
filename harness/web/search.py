@@ -30,7 +30,7 @@ class SearXNGSearch:
             raise ValueError("Search result limit must be between 1 and 10.")
         params = {"q": query, "format": "json", "language": language, "safesearch": safe_search}
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with aiohttp.ClientSession(timeout=self.timeout, trust_env=False) as session:
                 async with session.get(
                     f"{self.base_url}/search", params=params, allow_redirects=False
                 ) as response:
