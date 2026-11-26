@@ -18,3 +18,43 @@ max_output_bytes = 1048576
 max_snapshot_files = 10000
 max_snapshot_bytes = 524288000
 max_snapshot_file_bytes = 26214400
+
+# Stage 9 — controlled host-side web gateway.
+# Start SearXNG with: docker compose -f docker-compose.web.yml up -d
+# Review searxng/settings.yml and replace its placeholder secret first.
+[web]
+enabled = false
+provider = "searxng"
+
+[web.searxng]
+base_url = "http://127.0.0.1:8888"
+timeout_seconds = 8
+default_language = "auto"
+safe_search = 1
+
+[web.search]
+max_results = 5
+max_query_length = 500
+cache_ttl_seconds = 300
+
+[web.fetch]
+enabled = true
+timeout_seconds = 10
+max_redirects = 3
+max_response_bytes = 2097152
+max_content_chars = 12000
+max_concurrent = 2
+cache_ttl_seconds = 3600
+
+[web.security]
+allow_http = true
+allow_https = true
+block_private_ips = true
+block_localhost = true
+validate_redirects = true
+reject_ip_literals = true
+
+[web.audit]
+enabled = true
+store_page_content = false
+store_source_metadata = true
