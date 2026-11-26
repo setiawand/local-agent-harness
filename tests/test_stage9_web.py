@@ -157,3 +157,16 @@ def test_web_fetch_tool_records_citation_metadata(tmp_path):
     assert result["is_error"] is False
     assert '"source_id": "W1"' in result["content"][0]["text"]
     assert store.list_sources("session-1")[0]["source_id"] == "W1"
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user:pass@example.org/path",
+        "http://127.0.0.1/admin",
+        "http://metadata.google.internal/",
+    ],
+)
+def test_web_fetch_security_policy_rejects_credentials_and_local_hosts(tmp_path, url):
+    policy = SecurityPolicy(tmp_path)
+    with pytest.raises(SecurityViolation):
+        policy.validate_tool_call("WebFetch", {"url": url})
