@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import trafilatura
 
@@ -19,7 +19,17 @@ def extract_page(url: str, body: bytes, content_type: str, max_chars: int) -> We
     title = (metadata.title if metadata and metadata.title else "").strip()[:500]
     canonical = url
     if metadata and metadata.url:
-        canonical = urljoin(url, metadata.url)
+        candidate = urljoin(url, metadata.url)
+        original_parts = urlsplit(url)
+        candidate_parts = urlsplit(candidate)
+        if (
+            candidate_parts.scheme in {"http", "https"}
+            and candidate_parts.hostname
+            and candidate_parts.hostname.lower() == (original_parts.hostname or "").lower()
+            and not candidate_parts.username
+            and not candidate_parts.password
+        ):
+            canonical = candidate
     text = extracted[:max_chars]
     return WebPage(
         url=url, canonical_url=canonical, title=title, text=text,
