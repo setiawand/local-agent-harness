@@ -158,6 +158,16 @@ When enabled, the agent receives `WebSearch` and `WebFetch`. Both outbound opera
 
 The initial integration is implemented on this branch, but has not yet been run against the user's local environment. Run the test suite before enabling it for normal work. The Docker Bash/filesystem sandbox remains network-disabled; do not add the web gateway or Docker socket to that container.
 
+Stage 9 acceptance checks:
+
+```bash
+uv run python -m pytest tests/test_stage9_web.py -q
+uv run python -m pytest -q
+uv run lah --doctor --project .
+```
+
+Then ask the agent to search for a current public topic. Approve the WebSearch request, ask it to fetch one relevant result, approve the WebFetch request, and run `/sources`. Confirm the returned `[W1]` reference maps to the fetched URL. The existing Docker integration tests should continue to confirm that the Bash sandbox has no network access.
+
 ## Tests
 
 ```bash
