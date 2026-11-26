@@ -1,6 +1,6 @@
 use_default_settings: true
 server:
-  limiter: true
+  limiter: false
   image_proxy: false
 search:
   safe_search: 1
