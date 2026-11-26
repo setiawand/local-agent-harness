@@ -85,12 +85,16 @@ def create_agent(
     if write_enabled:
         selected_tools.extend(WRITE_TOOLS)
 
-    return Agent(
+    agent = Agent(
         api="noapi",
         endpoint=endpoint,
         system=build_system_prompt(project_root, memory_lines, web_enabled),
         tools=selected_tools,
-        extra_tool_classes=extra_tool_classes or [],
         cwd=str(project_root),
         user_cwd=str(project_root),
     )
+    # Instantiate extension tools after construction to avoid coupling this
+    # harness to optional Agent constructor parameters across mlx-code releases.
+    for tool_class in extra_tool_classes or []:
+        agent.tools.append(tool_class({}))
+    return agent
