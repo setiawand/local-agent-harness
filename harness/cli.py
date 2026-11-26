@@ -483,6 +483,9 @@ async def run(args):
                 logger.exception("Database restore failed")
             continue
         if user_text == "/sources":
+            if not config.web.enabled:
+                print("Web tools are disabled in configuration.")
+                continue
             citations = CitationStore(db.db_path)
             sources = citations.list_sources(session_id)
             if not sources:
