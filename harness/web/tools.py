@@ -37,7 +37,7 @@ def build_web_tool_classes(
         async def execute(self, params: WebSearchParams, signal=None) -> dict:
             if signal is not None and signal.is_set():
                 raise ValueError("Web search aborted.")
-            results = await gateway.search(params.query)
+            results = await gateway.search(params.query, limit=params.limit)
             return {
                 "content": [{
                     "type": "text",
