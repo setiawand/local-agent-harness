@@ -81,7 +81,9 @@ class PinnedPublicResolver(aiohttp.abc.AbstractResolver):
         return None
 
 
-async def validate_public_target(url: str) -> tuple[str, str, int]:
-    clean, host, port = normalize_url(url)
+async def validate_public_target(
+    url: str, allowed_schemes: set[str] | None = None,
+) -> tuple[str, str, int]:
+    clean, host, port = normalize_url(url, allowed_schemes)
     await resolve_public(host, port)
     return clean, host, port
