@@ -24,14 +24,18 @@ class SafeWebFetcher:
         self.max_redirects = max_redirects
         self.max_response_bytes = max_response_bytes
         self.max_content_chars = max_content_chars
-        self._semaphore = asyncio.Semaphore(max_concurrent)\n        self.allowed_schemes = allowed_schemes or {"http", "https"}
+        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self.allowed_schemes = allowed_schemes or {"http", "https"}
 
     async def fetch(self, url: str) -> WebPage:
         async with self._semaphore:
             current = url
             for redirect_count in range(self.max_redirects + 1):
                 try:
-                    current, _, _ = await asyncio.wait_for(\n                        validate_public_target(current, self.allowed_schemes),\n                        timeout=self.timeout_seconds,\n                    )
+                    current, _, _ = await asyncio.wait_for(
+                        validate_public_target(current, self.allowed_schemes),
+                        timeout=self.timeout_seconds,
+                    )
                     timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
                     connector = aiohttp.TCPConnector(
                         resolver=PinnedPublicResolver(), use_dns_cache=False,
