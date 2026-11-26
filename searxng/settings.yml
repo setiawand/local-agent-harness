@@ -1,6 +1,5 @@
 use_default_settings: true
 server:
-  secret_key: "CHANGE_THIS_TO_A_RANDOM_SECRET_BEFORE_DEPLOY"
   limiter: true
   image_proxy: false
 search:
