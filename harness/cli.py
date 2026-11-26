@@ -121,6 +121,8 @@ def build_agent(
             },
             default_language=web.default_language,
             safe_search=web.safe_search,
+            search_cache_ttl=web.search_cache_ttl_seconds,
+            fetch_cache_ttl=web.fetch_cache_ttl_seconds,
         )
         citations = CitationStore(db.db_path)
         citations.initialize()
