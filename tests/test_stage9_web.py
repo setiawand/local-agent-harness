@@ -207,3 +207,24 @@ def test_gateway_rate_limits_uncached_requests():
             await gateway.search("the thirty-first unique query")
 
     asyncio.run(run())
+
+def test_pinned_resolver_rechecks_dns_result(monkeypatch):
+    from harness.web.security import PinnedPublicResolver
+
+    async def fake_resolve(host, port):
+        raise WebSecurityError("Host resolves to a non-public address (10.0.0.4).")
+
+    async def run():
+        monkeypatch.setattr("harness.web.security.resolve_public", fake_resolve)
+        resolver = PinnedPublicResolver()
+        with pytest.raises(WebSecurityError, match="non-public"):
+            await resolver.resolve("rebound.example.org", 443)
+
+    asyncio.run(run())
+
+
+def test_url_scheme_allowlist_is_enforced():
+    with pytest.raises(WebSecurityError, match="scheme is not enabled"):
+        normalize_url("http://example.org", {"https"})
+    clean, _, _ = normalize_url("https://example.org", {"https"})
+    assert clean == "https://example.org/"
