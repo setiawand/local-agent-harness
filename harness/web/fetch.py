@@ -19,6 +19,7 @@ class SafeWebFetcher:
     def __init__(
         self, timeout_seconds: int = 10, max_redirects: int = 3,
         max_response_bytes: int = 2_097_152, max_content_chars: int = 12_000,
+        max_concurrent: int = 2, allowed_schemes: set[str] | None = None,
     ):
         self.timeout_seconds = timeout_seconds
         self.max_redirects = max_redirects
