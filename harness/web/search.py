@@ -15,7 +15,7 @@ class SearchError(RuntimeError):
 class SearXNGSearch:
     def __init__(self, base_url: str, timeout_seconds: int = 8):
         parsed = urlparse(base_url)
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError("SearXNG base_url must be an HTTP(S) URL.")
         if parsed.hostname not in {"127.0.0.1", "::1", "localhost"}:
             raise ValueError("SearXNG must be bound to loopback; remote search endpoints are not accepted.")
@@ -31,10 +31,20 @@ class SearXNGSearch:
         params = {"q": query, "format": "json", "language": language, "safesearch": safe_search}
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
-                async with session.get(f"{self.base_url}/search", params=params) as response:
+                async with session.get(
+                    f"{self.base_url}/search", params=params, allow_redirects=False
+                ) as response:
+                    if response.status in {301, 302, 303, 307, 308}:
+                        raise SearchError("SearXNG redirects are not permitted.")
                     if response.status != 200:
                         raise SearchError(f"SearXNG returned HTTP {response.status}.")
-                    payload = await response.json(content_type=None)
+                    if response.content_length and response.content_length > 1_048_576:
+                        raise SearchError("SearXNG response exceeds 1 MiB.")
+                    body = await response.content.read(1_048_577)
+                    if len(body) > 1_048_576:
+                        raise SearchError("SearXNG response exceeds 1 MiB.")
+                    import json
+                    payload = json.loads(body)
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as exc:
             if isinstance(exc, SearchError):
                 raise
