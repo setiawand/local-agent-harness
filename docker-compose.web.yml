@@ -16,8 +16,6 @@ services:
       - SEARXNG_SECRET=${SEARXNG_SECRET:?Set SEARXNG_SECRET in the environment before starting SearXNG}
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
     read_only: true
     tmpfs:
       - /tmp:size=64m,noexec,nosuid,nodev
