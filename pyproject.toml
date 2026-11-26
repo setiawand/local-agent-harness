@@ -6,6 +6,8 @@ requires-python = ">=3.12.8"
 dependencies = [
   "mlx-code==0.0.42",
   "prompt-toolkit>=3.0.53",
+  "aiohttp>=3.10,<4",
+  "trafilatura>=2.0,<3",
 ]
 
 [project.scripts]
