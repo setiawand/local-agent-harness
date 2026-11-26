@@ -56,7 +56,7 @@ class SearXNGSearch:
             if not isinstance(item, dict):
                 continue
             url = item.get("url", "")
-            if not url.startswith(("http://", "https://")):
+            if not isinstance(url, str) or not url.startswith(("http://", "https://")):
                 continue
             results.append(SearchResult(
                 title=str(item.get("title") or "")[:500],
