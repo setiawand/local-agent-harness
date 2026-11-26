@@ -13,6 +13,9 @@ from harness.streaming import TerminalStream
 from harness.docker_sandbox import DockerSandbox
 from harness.filesystem_sandbox import install_filesystem_sandbox
 from harness.config import HarnessConfig, load_config
+from harness.web.citations import CitationStore
+from harness.web.gateway import WebGateway
+from harness.web.tools import build_web_tool_classes
 from harness.diagnostics import doctor
 from harness.observability import configure_logging
 from harness.security import (
@@ -57,6 +60,7 @@ Available commands:
   /remember TEXT     Save a persistent memory
   /search TEXT       Search persistent memories
   /audit             Show security audit events
+  /sources           List fetched web sources for this session
   /backup            Create a consistent SQLite backup
   /restore PATH      Restore a database backup (explicit confirmation required)
   /write on          Enable write tools
@@ -97,8 +101,34 @@ def build_agent(
 ):
     memories = db.list_memories(str(project_root))
     memory_lines = [row["content"] for row in memories[:12]]
+    extra_tool_classes = []
+    if config.web.enabled:
+        web = config.web
+        gateway = WebGateway(
+            base_url=web.base_url,
+            search_timeout=web.search_timeout_seconds,
+            fetch_timeout=web.fetch_timeout_seconds,
+            max_results=web.max_results,
+            max_query_length=web.max_query_length,
+            max_content_chars=web.max_content_chars,
+            max_response_bytes=web.max_response_bytes,
+            max_redirects=web.max_redirects,
+            max_concurrent=web.max_concurrent,
+            allowed_schemes={
+                scheme for scheme, enabled in
+                (("http", web.allow_http), ("https", web.allow_https)) if enabled
+            },
+            default_language=web.default_language,
+            safe_search=web.safe_search,
+        )
+        citations = CitationStore(db.db_path)
+        citations.initialize()
+        extra_tool_classes = build_web_tool_classes(gateway, citations, db._lah_active_session_id)
+        if not web.fetch_enabled:
+            extra_tool_classes = extra_tool_classes[:1]
     return create_agent(
-        project_root, memory_lines, write_enabled, endpoint=config.endpoint
+        project_root, memory_lines, write_enabled, endpoint=config.endpoint,
+        extra_tool_classes=extra_tool_classes, web_enabled=config.web.enabled,
     )
 
 
@@ -358,6 +388,7 @@ async def run(args):
     print(f"Write tools: {'ON' if write_enabled else 'OFF (read-only)'}")
     if write_enabled:
         print("Execution: Docker sandbox (filesystem tools + Bash; network disabled)")
+    print(f"Web tools: {"ON" if config.web.enabled else "OFF"}")
     print("Type /help for commands. Ctrl-D or /quit to exit.")
     prompt_session = build_prompt_session()
 
@@ -449,6 +480,15 @@ async def run(args):
             except Exception as exc:
                 print(f"Database restore failed: {exc}")
                 logger.exception("Database restore failed")
+            continue
+        if user_text == "/sources":
+            citations = CitationStore(db.db_path)
+            sources = citations.list_sources(session_id)
+            if not sources:
+                print("No fetched web sources in this session.")
+            else:
+                for source in sources:
+                    print("[{}] {} — {}\n    {}".format(source["source_id"], source["title"], source["domain"], source["url"]))
             continue
         if user_text == "/audit":
             events = db.list_security_events(session_id, 30)
