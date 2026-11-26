@@ -49,8 +49,12 @@ class SearXNGSearch:
             if isinstance(exc, SearchError):
                 raise
             raise SearchError(f"SearXNG request failed: {exc}") from exc
+        if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+            raise SearchError("SearXNG returned an invalid JSON response.")
         results = []
-        for item in payload.get("results", [])[:limit]:
+        for item in payload["results"][:limit]:
+            if not isinstance(item, dict):
+                continue
             url = item.get("url", "")
             if not url.startswith(("http://", "https://")):
                 continue
