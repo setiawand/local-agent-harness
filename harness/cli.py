@@ -313,7 +313,7 @@ def install_security_and_journal(
 
         requires_approval = bool(reason)
         if requires_approval:
-            approved = await approval.approve(name, target, reason, project_root)
+            approved = await approval.approve(name, redact_audit_target(name, target), reason, project_root)
             decision = "approved" if approved else "denied"
             db.record_security_event(
                 session_id, call_id, name, "tool_call",
